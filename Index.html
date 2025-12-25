@@ -1,0 +1,162 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lock AES</title>
+
+<style>
+body{
+  margin:0;
+  font-family:system-ui,Segoe UI,Roboto,Arial;
+  background:#0f172a;
+  color:#e5e7eb;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:100vh;
+}
+.app{
+  width:100%;
+  max-width:420px;
+  background:#020617;
+  border-radius:18px;
+  padding:16px;
+  box-shadow:0 20px 50px rgba(0,0,0,.6);
+}
+h1{
+  margin:0 0 10px;
+  font-size:18px;
+  text-align:center;
+}
+.tabs{
+  display:flex;
+  gap:6px;
+  margin-bottom:12px;
+}
+.tabs button{
+  flex:1;
+  padding:10px;
+  border-radius:12px;
+  border:none;
+  background:#020617;
+  color:#94a3b8;
+  font-weight:700;
+}
+.tabs button.active{
+  background:#2563eb;
+  color:#fff;
+}
+textarea,input{
+  width:100%;
+  background:#020617;
+  color:#fff;
+  border:1px solid #1e293b;
+  border-radius:12px;
+  padding:10px;
+  margin-bottom:10px;
+  font-size:14px;
+}
+textarea{min-height:120px}
+button.main{
+  width:100%;
+  padding:12px;
+  border:none;
+  border-radius:14px;
+  background:#2563eb;
+  color:#fff;
+  font-weight:800;
+  margin-bottom:10px;
+}
+.output{
+  background:#020617;
+  border:1px dashed #2563eb;
+  border-radius:12px;
+  padding:10px;
+  font-family:monospace;
+  font-size:12px;
+  word-break:break-word;
+}
+.status{
+  margin-top:8px;
+  font-size:13px;
+  font-weight:700;
+}
+.ok{color:#22c55e}
+.err{color:#ef4444}
+</style>
+</head>
+
+<body>
+<div class="app">
+<h1>🔐 Lock AES</h1>
+
+<div class="tabs">
+  <button id="tEnc" class="active">Encrypt</button>
+  <button id="tDec">Decrypt</button>
+</div>
+
+<div id="enc">
+  <textarea id="encText" placeholder="Texto"></textarea>
+  <input id="encPass" type="password" placeholder="Clave">
+  <button class="main" onclick="encrypt()">Encrypt</button>
+  <div class="output" id="encOut"></div>
+  <div class="status" id="encStatus"></div>
+</div>
+
+<div id="dec" style="display:none">
+  <textarea id="decPack" placeholder="Paquete LOCK1..."></textarea>
+  <input id="decPass" type="password" placeholder="Clave">
+  <button class="main" onclick="decrypt()">Decrypt</button>
+  <div class="output" id="decOut"></div>
+  <div class="status" id="decStatus"></div>
+</div>
+</div>
+
+<script>
+const ITER=200000, VERSION="LOCK1";
+const te=new TextEncoder(), td=new TextDecoder();
+
+function rand(n){const a=new Uint8Array(n);crypto.getRandomValues(a);return a}
+function b64u(b){return btoa(String.fromCharCode(...b)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=/g,"")}
+function u8(s){return new Uint8Array(atob(s.replace(/-/g,"+").replace(/_/g,"/")).split("").map(c=>c.charCodeAt(0)))}
+
+async function keyFromPass(pass,salt){
+  const k=await crypto.subtle.importKey("raw",te.encode(pass),"PBKDF2",false,["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    {name:"PBKDF2",salt,iterations:ITER,hash:"SHA-256"},
+    k,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]
+  );
+}
+
+async function encrypt(){
+  encStatus.textContent="";
+  if(!encText.value||!encPass.value){encStatus.textContent="Faltan datos";encStatus.className="status err";return}
+  try{
+    const salt=rand(16),iv=rand(12);
+    const key=await keyFromPass(encPass.value,salt);
+    const ct=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,te.encode(encText.value));
+    encOut.textContent=`${VERSION}.i=${ITER}.${b64u(salt)}.${b64u(iv)}.${b64u(new Uint8Array(ct))}`;
+    encStatus.textContent="OK";
+    encStatus.className="status ok";
+  }catch{encStatus.textContent="Error";encStatus.className="status err"}
+}
+
+async function decrypt(){
+  decStatus.textContent="";
+  try{
+    const [v,i,salt,iv,ct]=decPack.value.split(".");
+    if(v!==VERSION) throw 0;
+    const key=await keyFromPass(decPass.value,u8(salt));
+    const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:u8(iv)},key,u8(ct));
+    decOut.textContent=td.decode(pt);
+    decStatus.textContent="OK";
+    decStatus.className="status ok";
+  }catch{decStatus.textContent="Clave o paquete inválido";decStatus.className="status err"}
+}
+
+tEnc.onclick=()=>{tEnc.classList.add("active");tDec.classList.remove("active");enc.style.display="";dec.style.display="none"}
+tDec.onclick=()=>{tDec.classList.add("active");tEnc.classList.remove("active");dec.style.display="";enc.style.display="none"}
+</script>
+</body>
+</html>
