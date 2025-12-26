@@ -356,13 +356,26 @@ function toggleTG(force){
   p.classList.toggle("open", open);
   p.setAttribute("aria-hidden", open ? "false" : "true");
 }
-function openTG(url) {
-  // Fuerza enlaces válidos de Telegram
-  if (!url.startsWith("https://")) {
-    url = "https://t.me/" + url.replace(/^@/, "");
-  }
+function openTG(url){
+  // WebView-safe: use HTTPS only and open externally
+  try{
+    if(typeof url !== "string") return;
+    url = url.trim();
 
-  window.open(url, "_blank");
+    if(url.startsWith("@")) url = "https://t.me/" + url.slice(1);
+
+    if(url.startsWith("https://t.me/")){
+      const m = url.match(/domain=([^&]+)/);
+      if(m && m[1]) url = "https://t.me/" + m[1];
+      else url = "https://t.me/";
+    }
+
+    if(!/^https?:\/\//i.test(url)) url = "https://t.me/" + url.replace(/^\/+/, "");
+
+    window.open(url, "_blank");
+  }catch(e){
+    location.href = url;
+  }
 }
 document.addEventListener("click",(e)=>{
   const p=document.getElementById("tgPanel");
