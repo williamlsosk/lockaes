@@ -1,4 +1,8 @@
-<meta name='viewport' content='width=device-width, initial-scale=1'/>name="viewport" content="width=device-width,initial-scale=1">
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Lock AES</title>
 
 <style>
@@ -106,7 +110,8 @@ button.main{
   transition: transform .15s ease;
 }
 .tg-fab:active{ transform: scale(.96); }
-.tg-fab svg{ width:26px; height:26px; display:block; }
+.tg-fab svg{width:30px;height:30px;display:block;overflow:visible;}
+.tg-fab{overflow:visible;}
 
 .tg-panel{
   position:fixed;
@@ -285,11 +290,9 @@ button.main{
 </div>
 
 <button class="tg-fab" id="tgFab" type="button" aria-label="Abrir Telegram" onclick="toggleTG()">
-  <!-- SVG Telegram icon -->
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path fill="#2AABEE" d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2z"/>
-    <path fill="#fff" d="M17.47 7.35c.16-.72-.55-.99-1.12-.78L6.7 10.3c-.67.26-.66.65-.12.82l2.47.77 5.72-3.6c.27-.17.52-.08.32.1l-4.64 4.18-.17 2.55c.25 0 .36-.12.5-.27l1.2-1.16 2.5 1.84c.46.25.8.12.92-.43l1.6-7.78z"/>
-  </svg>
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+  <path d="M22.04 2.16 2.9 9.55c-1.3.52-1.29 1.25-.24 1.57l4.88 1.52 1.86 5.73c.23.64.12.9.8.9.52 0 .75-.24 1.03-.5l2.33-2.26 4.85 3.56c.89.49 1.52.24 1.74-.82L23.5 3.77c.32-1.45-.55-2.1-1.46-1.61ZM9.88 17.57l-.3-4.62 8.41-7.6c.37-.33-.08-.52-.57-.23l-10.4 6.55-4.22-1.32 16.44-6.34-2.73 12.84-4.56-3.35-2.21 2.07c-.25.24-.46.44-.86.44Z"/>
+</svg>
 </button>
 
 <script>
@@ -353,24 +356,18 @@ function toggleTG(force){
   p.setAttribute("aria-hidden", open ? "false" : "true");
 }
 function openTG(url){
-  // WebView-safe: use HTTPS only and open externally
+  // Convierte invites tipo https://t.me/+HASH a formato joinchat para evitar redirecciones tg:join en algunos WebView
   try{
-    if(typeof url !== "string") return;
-    url = url.trim();
+    const m = url.match(/^https?:\/\/t\.me\/\+([A-Za-z0-9_-]+)$/i);
+    if(m){ url = "https://t.me/joinchat/" + m[1]; }
+  }catch(e){}
 
-    if(url.startsWith("@")) url = "https://t.me/" + url.slice(1);
-
-    if(url.startsWith("https://t.me/")){
-      const m = url.match(/domain=([^&]+)/);
-      if(m && m[1]) url = "https://t.me/" + m[1];
-      else url = "https://t.me/";
-    }
-
-    if(!/^https?:\/\//i.test(url)) url = "https://t.me/" + url.replace(/^\/+/, "");
-
-    window.open(url, "_blank");
+  // Intenta abrir fuera del WebView (en browser / Telegram via App Links)
+  try{
+    const w = window.open(url, "_blank", "noopener,noreferrer");
+    if(!w){ window.location.href = url; }
   }catch(e){
-    location.href = url;
+    window.location.href = url;
   }
 }
 document.addEventListener("click",(e)=>{
