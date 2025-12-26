@@ -356,9 +356,13 @@ function toggleTG(force){
   p.classList.toggle("open", open);
   p.setAttribute("aria-hidden", open ? "false" : "true");
 }
-function openTG(url){
-  // Abre Telegram (si está instalado) o el navegador.
-  window.location.href = url;
+function openTG(url) {
+  // Fuerza enlaces válidos de Telegram
+  if (!url.startsWith("https://")) {
+    url = "https://t.me/" + url.replace(/^@/, "");
+  }
+
+  window.open(url, "_blank");
 }
 document.addEventListener("click",(e)=>{
   const p=document.getElementById("tgPanel");
